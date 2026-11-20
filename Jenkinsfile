@@ -60,6 +60,49 @@ pipeline {
             }
         }
 
+
+        stage('Nexus IQ Policy Evaluation') {
+            steps {
+                nexusPolicyEvaluation(
+                    iqApplication: selectedApplication(
+                       'jenkins-nexus-demo__jonmik618'
+                    ),
+                    iqInstanceId: 'local-nexus-iq',
+                    iqOrganization: 'faebc65955b24609b3c6bd053d07cf65',
+                    iqStage: 'build',
+
+                    iqScanPatterns: [
+                       [scanPattern: 'target/*.jar'],
+                       [scanPattern: 'target/dependency/*.jar']
+                    ],
+
+                    failBuildOnNetworkError: true,
+                    failBuildOnScanningErrors: true,
+
+                    reachability: [
+                       failOnError: true,
+                       logLevel: 'INFO',
+
+                    javaAnalysis: [
+                       enable: true,
+                       algorithm: 'CHA',
+                       entrypointStrategy: 'JAVA_MAIN',
+
+                       namespaces: [
+                           [namespace: 'com.mycompany.app']
+                       ],
+
+                       includes: [
+                           [pattern: 'target/*.jar'],
+                           [pattern: 'target/dependency/*.jar']
+                        ]
+                   ]
+                ]
+           )
+       }
+    }
+
+
         stage('Nexus IQ Policy Evaluation') {
             steps {
                 nexusPolicyEvaluation(
