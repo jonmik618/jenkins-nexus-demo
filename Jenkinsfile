@@ -63,8 +63,11 @@ pipeline {
         stage('Nexus IQ Policy Evaluation') {
             steps {
                 nexusPolicyEvaluation(
-                    iqApplication: env.IQ_APPLICATION,
-                    iqInstanceId: env.IQ_SERVER,
+                    iqApplication: selectedApplication(
+                        'jenkins-nexus-demo__jonmik618'
+                    ),
+                    iqInstanceId: 'local-nexus-iq',
+                    iqOrganization: 'faebc65955b24609b3c6bd053d07cf65',
                     iqStage: 'build',
                     iqScanPatterns: [
                         [scanPattern: 'target/*.jar'],
