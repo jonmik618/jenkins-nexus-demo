@@ -5,7 +5,7 @@ pipeline {
     environment {
         PATH = "/Users/jon.mikula/.rd/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:${env.PATH}"
 
-        IQ_APPLICATION = 'jenkins-ci-demo'
+        IQ_APPLICATION = 'jenkins-nexus-demo__jonmik618'
         IQ_SERVER = 'local-nexus-iq'
     }
 
@@ -103,24 +103,6 @@ pipeline {
     }
 
 
-        stage('Nexus IQ Policy Evaluation') {
-            steps {
-                nexusPolicyEvaluation(
-                    iqApplication: selectedApplication(
-                        'jenkins-nexus-demo__jonmik618'
-                    ),
-                    iqInstanceId: 'local-nexus-iq',
-                    iqOrganization: 'faebc65955b24609b3c6bd053d07cf65',
-                    iqStage: 'build',
-                    iqScanPatterns: [
-                        [scanPattern: 'target/*.jar'],
-                        [scanPattern: 'target/dependency/*.jar']
-                    ],
-                    failBuildOnNetworkError: true,
-                    failBuildOnScanningErrors: true
-                )
-            }
-        }
     }
 
     post {
