@@ -85,15 +85,14 @@ pipeline {
 
                     javaAnalysis: [
                        enable: true,
-                       algorithm: 'CHA',
-                       entrypointStrategy: 'JAVA_MAIN',
+                       entrypointStrategy: 'ACCESSIBLE_CONCRETE',
 
                        namespaces: [
                            [namespace: 'com.mycompany.app']
                        ],
 
                        includes: [
-                           [pattern: 'target/*.jar'],
+                           [pattern: 'target/my-app-*.jar'],
                            [pattern: 'target/dependency/*.jar']
                         ]
                    ]
