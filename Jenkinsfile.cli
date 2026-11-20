@@ -94,7 +94,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'nexus-iq-credentials',
+                        credentialsId: 'svc-jenkins',
                         usernameVariable: 'IQ_USER',
                         passwordVariable: 'IQ_PASS'
                     )
