@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -52,7 +51,8 @@ pipeline {
             steps {
                 sh '''
                     mvn -B dependency:copy-dependencies \
-                      -DoutputDirectory=target/dependency
+                      -DoutputDirectory=target/dependency \
+                      -DincludeScope=runtime
 
                     echo "=== JARs to evaluate ==="
                     find target -name "*.jar" -type f
@@ -60,54 +60,46 @@ pipeline {
             }
         }
 
-
         stage('Nexus IQ Policy Evaluation') {
             steps {
                 nexusPolicyEvaluation(
                     iqApplication: selectedApplication(
-                       'jenkins-nexus-demo__jonmik618'
+                        'jenkins-nexus-demo__jonmik618'
                     ),
                     iqInstanceId: 'local-nexus-iq',
                     iqOrganization: 'faebc65955b24609b3c6bd053d07cf65',
                     iqStage: 'build',
 
+                    // No exclude patterns needed - test deps excluded at Maven level
                     iqScanPatterns: [
-                       [scanPattern: 'target/*.jar'],
-                       [scanPattern: 'target/dependency/*.jar']
-
-                       // Exlude patterns must come after all includes
-                       [scanPattern: '!**/dependency/*test*.jar'],
-                       [scanPattern: '!**/dependency/*junit*.jar'],
-                       [scanPattern: '!**/dependency/*opentest*.jar'],
-                       [scanPattern: '!**/dependency/*jspecify*.jar']
+                        [scanPattern: 'target/*.jar'],
+                        [scanPattern: 'target/dependency/*.jar']
                     ],
 
                     failBuildOnNetworkError: true,
                     failBuildOnScanningErrors: true,
 
                     reachability: [
-                       failOnError: true,
-                       logLevel: 'INFO',
+                        failOnError: true,
+                        logLevel: 'INFO',
 
-                    javaAnalysis: [
-                       enable: true,
-                       entrypointStrategy: 'ACCESSIBLE_CONCRETE',
+                        javaAnalysis: [
+                            enable: true,
+                            entrypointStrategy: 'ACCESSIBLE_CONCRETE',
 
-                       namespaces: [
-                           [namespace: 'com.mycompany.app']
-                       ],
+                            namespaces: [
+                                [namespace: 'com.mycompany.app']
+                            ],
 
-                       includes: [
-                           [pattern: 'target/my-app-*.jar'],
-                           [pattern: 'target/dependency/*.jar']
+                            includes: [
+                                [pattern: 'target/my-app-*.jar'],
+                                [pattern: 'target/dependency/*.jar']
+                            ]
                         ]
-                   ]
-                ]
-           )
-       }
-    }
-
-
+                    ]
+                )
+            }
+        }
     }
 
     post {
@@ -124,4 +116,3 @@ pipeline {
         }
     }
 }
-
