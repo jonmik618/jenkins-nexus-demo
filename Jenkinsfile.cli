@@ -1,0 +1,156 @@
+i
+pipeline {
+    agent any
+
+    environment {
+        PATH = "/Users/jon.mikula/.rd/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:${env.PATH}"
+
+        IQ_SERVER = 'http://127.0.0.1:8070'
+        IQ_APPLICATION = 'jenkins-cli-demo'
+        IQ_STAGE = 'build'
+
+        IQ_CLI_URL = 'https://download.sonatype.com/clm/scanner/nexus-iq-cli-latest.jar'
+    }
+
+    options {
+        timestamps()
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Checkout Source') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Verify Environment') {
+            steps {
+                sh '''
+                    set -eu
+
+                    echo "=== Java ==="
+                    java -version
+
+                    echo "=== Maven ==="
+                    mvn -version
+
+                    echo "=== Source Revision ==="
+                    git log -1 --oneline
+
+                    test -f pom.xml
+                '''
+            }
+        }
+
+        stage('Build and Test') {
+            steps {
+                sh 'mvn -B clean package'
+            }
+        }
+
+        stage('Collect Dependencies') {
+            steps {
+                sh '''
+                    set -eu
+
+                    mvn -B dependency:copy-dependencies \
+                        -DoutputDirectory=target/dependency
+
+                    mkdir -p target/iq-scan
+
+                    cp target/my-app-*.jar target/iq-scan/
+
+                    find target/dependency \
+                        -maxdepth 1 -name "*.jar" \
+                        -exec cp {} target/iq-scan/ \\;
+
+                    echo "=== Scan Targets ==="
+                    find target/iq-scan -type f -name "*.jar"
+
+                    test -n "$(find target/iq-scan -name '*.jar' -print -quit)"
+                '''
+            }
+        }
+
+        stage('Download Nexus IQ CLI') {
+            steps {
+                sh '''
+                    set -eu
+
+                    mkdir -p tools
+
+                    curl --fail --location --silent \
+                        --show-error --retry 3 \
+                        --output tools/nexus-iq-cli.jar \
+                        "$IQ_CLI_URL"
+
+                    test -s tools/nexus-iq-cli.jar
+                '''
+            }
+        }
+
+        stage('Nexus IQ CLI + Java Reachability') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'nexus-iq-credentials',
+                        usernameVariable: 'IQ_USER',
+                        passwordVariable: 'IQ_PASS'
+                    )
+                ]) {
+                    sh '''
+                        set +x
+                        set -eu
+                        umask 077
+
+                        mkdir -p target
+
+                        params=$(mktemp "${TMPDIR:-/tmp}/iq-cli-params.XXXXXX")
+                        trap 'rm -f "$params"' EXIT
+
+                        printf '%s\\n' \
+                            '-a' "$IQ_USER:$IQ_PASS" \
+                            '-i' "$IQ_APPLICATION" \
+                            '-s' "$IQ_SERVER" \
+                            '-t' "$IQ_STAGE" \
+                            '-r' 'target/iq-cli-result.json' \
+                            '-ra' \
+                            '-rn' 'com.mycompany.app' \
+                            '-res' 'JAVA_MAIN' \
+                            '-rr' 'target/iq-reachability.json' \
+                            'target/iq-scan' \
+                            > "$params"
+
+                        echo "=== Starting Nexus IQ CLI Scan ==="
+                        echo "Application: $IQ_APPLICATION"
+                        echo "Stage: $IQ_STAGE"
+                        echo "Java Reachability: Enabled"
+                        echo "Namespace: com.mycompany.app"
+                        echo "Entrypoint Strategy: JAVA_MAIN"
+
+                        java -jar tools/nexus-iq-cli.jar "@$params"
+
+                        echo "=== IQ CLI Evaluation Complete ==="
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit(
+                allowEmptyResults: true,
+                testResults: '**/target/surefire-reports/*.xml'
+            )
+
+            archiveArtifacts(
+                artifacts: 'target/my-app-*.jar,target/iq-cli-result.json,target/iq-reachability.json',
+                allowEmptyArchive: true
+            )
+        }
+    }
+}
+
