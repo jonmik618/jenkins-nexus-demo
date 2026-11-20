@@ -74,6 +74,12 @@ pipeline {
                     iqScanPatterns: [
                        [scanPattern: 'target/*.jar'],
                        [scanPattern: 'target/dependency/*.jar']
+
+                       // Exlude patterns must come after all includes
+                       [scanPattern: '!**/dependency/*test*.jar'],
+                       [scanPattern: '!**/dependency/*junit*.jar'],
+                       [scanPattern: '!**/dependency/*opentest*.jar'],
+                       [scanPattern: '!**/dependency/*jspecify*.jar']
                     ],
 
                     failBuildOnNetworkError: true,
